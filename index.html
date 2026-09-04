@@ -6,8 +6,8 @@
 <title>현대자동차 물리보안 캠페인</title>
 <style>
   /* ── 폰트 ── */
-  @font-face{font-family:'HyundaiSans';src:url('../HyundaiSansHeadOffice-Bold.ttf') format('truetype');font-weight:700;}
-  @font-face{font-family:'HyundaiSans';src:url('../HyundaiSansHeadOffice-Regular.ttf') format('truetype');font-weight:400;}
+  @font-face{font-family:'HyundaiSans';src:url('HyundaiSansHeadOffice-Bold.ttf') format('truetype');font-weight:700;}
+  @font-face{font-family:'HyundaiSans';src:url('HyundaiSansHeadOffice-Regular.ttf') format('truetype');font-weight:400;}
 
   /* ── 리셋 ── */
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -30,9 +30,13 @@
   .screen.active{display:block;}
 
   /* ── 시계 ── */
-  #clock{position:absolute;top:9%;right:5.5%;color:#fff;
-    font-size:clamp(12px,2.2vh,34px);font-weight:700;letter-spacing:.04em;
-    text-shadow:0 2px 8px rgba(0,0,0,.5);pointer-events:none;z-index:50;}
+  /* 시계 : 배경의 HYUNDAI 워드마크와 글자 크기·높이를 맞춤
+     (워드마크 대문자 높이 51px / 2161px 기준 → 3.47em, 좌우 여백도 로고와 대칭) */
+  #clock{position:absolute;top:9.13%;right:12.22%;color:#fff;
+    font-family:'HyundaiSans','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    font-size:3.47em;line-height:1;font-weight:700;letter-spacing:.02em;
+    font-variant-numeric:tabular-nums;
+    pointer-events:none;z-index:50;}
 
   /* ══════════ 1. 시작 화면 ══════════ */
   #screen-start{background-image:url('배경_첫화면.png');}
