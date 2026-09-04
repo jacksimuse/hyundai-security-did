@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>현대자동차 물리보안 캠페인</title>
+<style>
+  /* ── 폰트 ── */
+  @font-face{font-family:'HyundaiSans';src:url('../HyundaiSansHeadOffice-Bold.ttf') format('truetype');font-weight:700;}
+  @font-face{font-family:'HyundaiSans';src:url('../HyundaiSansHeadOffice-Regular.ttf') format('truetype');font-weight:400;}
+
+  /* ── 리셋 ── */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#00193B;
+    font-family:'HyundaiSans','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  body{display:flex;align-items:center;justify-content:center;}
+
+  /* ── 스테이지 : 원본 이미지 비율(2161 × 3841) 고정 ── */
+  #stage{
+    position:relative;overflow:hidden;background:#00193B;
+    font-size:min(1vw, calc(1vh * 2161 / 3841));   /* 1em = 스테이지 폭의 1% */
+    width:min(100vw, calc(100vh * 2161 / 3841));
+    height:min(100vh, calc(100vw * 3841 / 2161));
+  }
+
+  /* ── 화면 공통 ── */
+  .screen{position:absolute;inset:0;display:none;
+    background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
+  .screen.active{display:block;}
+
+  /* ── 시계 ── */
+  #clock{position:absolute;top:9%;right:5.5%;color:#fff;
+    font-size:clamp(12px,2.2vh,34px);font-weight:700;letter-spacing:.04em;
+    text-shadow:0 2px 8px rgba(0,0,0,.5);pointer-events:none;z-index:50;}
+
+  /* ══════════ 1. 시작 화면 ══════════ */
+  #screen-start{background-image:url('배경_첫화면.png');}
+
+  /* ══════════ 5. 마지막 화면 ══════════ */
+  #screen-final{background-image:url('배경_마지막 화면.png');}
+
+  /* ── 버튼 (두 화면 공통 위치) ── */
+  .btn{position:absolute;left:11.106%;top:67.586%;width:77.788%;
+    border:0;padding:0;background:none;cursor:pointer;line-height:0;
+    -webkit-user-select:none;user-select:none;z-index:20;}
+  .btn img{width:100%;display:block;pointer-events:none;
+    transition:transform .12s cubic-bezier(.4,0,.2,1);}
+  .btn:active img{transform:scale(.94);}
+  .btn img.pop{animation:btnPop .34s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes btnPop{
+    0%{transform:scale(.94);}
+    55%{transform:scale(1.05);}
+    100%{transform:scale(1);}
+  }
+
+  /* ── 마지막 화면 요소 ── */
+  #fx-text{position:absolute;left:0;top:25.384%;width:100%;}
+  #fx-done{position:absolute;left:28.181%;top:39.391%;width:43.545%;
+    perspective:110em;                       /* 입체감 깊이 */
+    --half:3.9em;}                           /* 코인 두께의 1/2 */
+  #fx-done .coin{position:relative;width:100%;transform-style:preserve-3d;}
+  #fx-done .face{position:relative;width:100%;display:block;backface-visibility:hidden;}
+  #fx-done .face.front{transform:translateZ(var(--half));}
+  #fx-done .face.back{position:absolute;top:0;left:0;transform:rotateY(180deg) translateZ(var(--half));}
+  /* 옆면(두께) : 뱃지 외곽선을 따라 48개의 판을 원통형으로 세워 실제 두께를 만듦 (JS 생성) */
+  #fx-done .rim{position:absolute;left:50%;top:50%;
+    width:calc(var(--half) * 2);
+    background:linear-gradient(90deg,#0083a3 0%,#00b2da 45%,#0098bd 100%);}
+  #fx-text img{width:100%;display:block;}
+
+  /* 등장 애니메이션 (마지막 화면 진입 시 JS로 재생) */
+  #screen-final.play #fx-text{animation:riseUp .8s cubic-bezier(.22,1,.36,1) .1s both;}
+  #screen-final.play #fx-done .coin{animation:badgeFlip 1.4s cubic-bezier(.4,0,.6,1) .1s both;}
+  @keyframes riseUp{
+    from{opacity:0;transform:translateY(90px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  /* 뱃지 : 동전이 옆으로 넘어가듯 세로축 기준 입체 회전 (한 바퀴, 1회만) */
+  @keyframes badgeFlip{
+    from{transform:rotateY(0deg);}
+    to  {transform:rotateY(360deg);}
+  }
+
+  /* ══════════ 2~4. 영상 화면 ══════════ */
+  #screen-video{background:#000;}
+  #screen-video video{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:contain;background:#000;opacity:0;transition:opacity .18s linear;}
+  #screen-video video.on{opacity:1;}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <!-- ── 1. 시작 화면 ── -->
+  <div id="screen-start" class="screen active">
+    <button id="btn-start" class="btn" aria-label="참여 시작하기">
+      <img src="버튼_마지막 화면.png" alt="참여 시작하기" />
+    </button>
+  </div>
+
+  <!-- ── 2~4. 영상 재생 (video1 → video2 → video3) ── -->
+  <div id="screen-video" class="screen">
+    <video id="pA" playsinline preload="auto"></video>
+    <video id="pB" playsinline preload="auto"></video>
+  </div>
+
+  <!-- ── 5. 마지막 화면 ── -->
+  <div id="screen-final" class="screen">
+    <div id="fx-text"><img src="효과_아래서 위로.png" alt="시청 완료! 스태프에게 도장을 받고 다음 단계로 이동하세요." /></div>
+    <div id="fx-done">
+      <div class="coin">
+        <img class="face front" src="효과_완료.png" alt="완료" />
+        <img class="face back"  src="효과_완료.png" alt="" />
+      </div>
+    </div>
+    <button id="btn-back" class="btn" aria-label="처음으로">
+      <img src="버튼_첫화면.png" alt="처음으로" />
+    </button>
+  </div>
+
+  <!-- ── 시계 ── -->
+  <div id="clock">오전 00:00</div>
+
+</div>
+
+<script>
+/* ════════ 뱃지 옆면(두께) 생성 ════════
+   효과_완료.png의 외곽선을 96방향에서 실측한 반지름(em)이다.
+   이웃한 두 외곽점을 잇는 판을 세워 옆면을 만들기 때문에,
+   옆면·뒷면도 앞면과 똑같이 울퉁불퉁한 실루엣을 따라간다. ── */
+(function buildCoinRim(){
+  const coin = document.querySelector('#fx-done .coin');
+  if (!coin) return;
+  const R = [
+    21.06,20.79,20.18,19.45,18.94,18.82,19.10,19.68,20.44,20.97,21.03,20.55,
+    19.82,19.19,18.82,18.86,19.34,20.01,20.68,21.05,20.88,20.23,19.55,19.01,
+    18.79,19.01,19.55,20.29,20.88,21.05,20.68,19.95,19.29,18.86,18.81,19.19,
+    19.82,20.55,21.03,20.95,20.38,19.68,19.10,18.79,18.94,19.44,20.14,20.79,
+    21.06,20.79,20.14,19.44,18.94,18.79,19.10,19.68,20.38,20.95,21.03,20.55,
+    19.82,19.19,18.82,18.86,19.29,19.95,20.68,21.05,20.88,20.29,19.55,19.01,
+    18.79,19.01,19.55,20.23,20.88,21.05,20.68,20.01,19.34,18.86,18.82,19.19,
+    19.82,20.55,21.05,20.97,20.44,19.68,19.10,18.82,18.94,19.45,20.18,20.79];
+  const N = R.length;
+  const INSET = 0.995;   /* 앞뒷면 실루엣보다 아주 살짝 안쪽 */
+  const pt = k => {
+    const a = 2 * Math.PI * (k % N) / N, r = R[k % N] * INSET;
+    return [r * Math.cos(a), r * Math.sin(a)];
+  };
+  const frag = document.createDocumentFragment();
+  for (let k = 0; k < N; k++){
+    const [x1,y1] = pt(k), [x2,y2] = pt(k + 1);
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const dx = x2 - x1,       dy = y2 - y1;
+    const len = Math.hypot(dx, dy) * 1.09;          /* 이음매가 안 보이게 살짝 겹침 */
+    const deg = Math.atan2(dy, dx) * 180 / Math.PI - 90;
+    const d = document.createElement('div');
+    d.className = 'rim';
+    d.style.height     = len.toFixed(3) + 'em';
+    d.style.marginTop  = (-len / 2).toFixed(3) + 'em';
+    d.style.marginLeft = 'calc(var(--half) * -1)';
+    d.style.transform  =
+      `translate3d(${mx.toFixed(3)}em, ${my.toFixed(3)}em, 0) rotateZ(${deg.toFixed(2)}deg) rotateY(90deg)`;
+    frag.appendChild(d);
+  }
+  coin.appendChild(frag);
+})();
+
+/* ════════ 화면 전환 ════════ */
+const screens = {
+  start: document.getElementById('screen-start'),
+  video: document.getElementById('screen-video'),
+  final: document.getElementById('screen-final'),
+};
+const clockEl = document.getElementById('clock');
+
+function showScreen(name){
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+  clockEl.style.display = (name === 'video') ? 'none' : 'block';
+}
+
+/* ════════ 시계 ════════ */
+function updateClock(){
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  clockEl.textContent = `${h < 12 ? '오전' : '오후'} ${String(h % 12 || 12).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+/* ════════ 버튼 누름 효과 (작아졌다 커짐) ════════ */
+function pressEffect(btn, done){
+  const img = btn.querySelector('img');
+  img.classList.remove('pop');
+  void img.offsetWidth;          /* 리플로우 → 애니메이션 재시작 */
+  img.classList.add('pop');
+  setTimeout(done, 180);         /* 효과가 보인 뒤 화면 전환 */
+}
+
+/* ════════ 영상 재생 (2개 플레이어 교차 → 끊김 없음) ════════ */
+const VIDEOS = ['video1.mp4', 'video2.mp4', 'video3.mp4'];
+const players = [document.getElementById('pA'), document.getElementById('pB')];
+let cur = 0, idx = 0;
+
+function preload(playerIndex, videoIndex){
+  if (videoIndex >= VIDEOS.length) return;
+  const p = players[playerIndex];
+  p.src = VIDEOS[videoIndex];
+  p.load();
+}
+
+function playCurrent(){
+  const p = players[cur];
+  players.forEach(v => v.classList.remove('on'));
+  p.classList.add('on');
+  p.currentTime = 0;
+  const tryPlay = p.play();
+  if (tryPlay && tryPlay.catch) tryPlay.catch(() => { p.muted = true; p.play(); });
+  preload(1 - cur, idx + 1);     /* 다음 영상 미리 로드 */
+}
+
+function startSequence(){
+  idx = 0; cur = 0;
+  players.forEach(v => { v.classList.remove('on'); v.muted = false; });
+  preload(0, 0);
+  showScreen('video');
+  playCurrent();
+}
+
+function nextVideo(p){
+  if (!p.classList.contains('on')) return;   /* 비활성 플레이어 이벤트 무시 */
+  idx++;
+  if (idx < VIDEOS.length){ cur = 1 - cur; playCurrent(); }
+  else showFinal();
+}
+
+players.forEach(p => {
+  p.addEventListener('ended', () => nextVideo(p));
+  /* 영상 파일이 없거나 재생 불가일 때도 다음 순서로 넘어감 */
+  p.addEventListener('error', () => nextVideo(p));
+});
+
+/* ════════ 마지막 화면 ════════ */
+function showFinal(){
+  players.forEach(v => { v.pause(); v.classList.remove('on'); });
+  screens.final.classList.remove('play');
+  void screens.final.offsetWidth;            /* 애니메이션 재시작 */
+  showScreen('final');
+  screens.final.classList.add('play');
+}
+
+/* ════════ 버튼 이벤트 ════════ */
+document.getElementById('btn-start').addEventListener('click', function(){
+  pressEffect(this, startSequence);
+});
+
+document.getElementById('btn-back').addEventListener('click', function(){
+  pressEffect(this, () => {
+    players.forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); v.classList.remove('on'); });
+    screens.final.classList.remove('play');
+    showScreen('start');
+  });
+});
+</script>
+</body>
+</html>

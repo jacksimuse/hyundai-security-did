@@ -1,0 +1,14 @@
+# 참고용 자료 — 배포에는 포함하지 않음
+샘플_*.png
+효과.mp4
+index_backup_*.html
+
+# 구버전 자산
+kiosk_*.png
+mobile_*.png
+KakaoTalk_*.png
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
