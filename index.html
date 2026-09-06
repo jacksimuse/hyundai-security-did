@@ -216,11 +216,25 @@ function preload(playerIndex, videoIndex){
   p.load();
 }
 
+/* 첫 영상을 페이지가 열릴 때 미리 불러 첫 프레임까지 준비해 둔다.
+   준비된 상태로 화면을 바꾸므로 전환 순간에 검은 화면이 스치지 않는다. */
+function primeFirstVideo(){
+  const p = players[0];
+  if (p.getAttribute('src') !== VIDEOS[0]){
+    p.src = VIDEOS[0];
+    p.load();
+  }
+  const toStart = () => { try { p.currentTime = 0; } catch(e){} };
+  if (p.readyState >= 1) toStart();
+  else p.addEventListener('loadedmetadata', toStart, { once: true });
+}
+
 function playCurrent(){
   const p = players[cur];
-  players.forEach(v => v.classList.remove('on'));
+  /* 화면에 나타나기 전에 먼저 불투명 상태로 만들어 페이드인 깜빡임을 없앤다 */
+  players.forEach(v => { if (v !== p) v.classList.remove('on'); });
   p.classList.add('on');
-  p.currentTime = 0;
+  if (p.currentTime > 0.05) { try { p.currentTime = 0; } catch(e){} }
   const tryPlay = p.play();
   if (tryPlay && tryPlay.catch) tryPlay.catch(() => { p.muted = true; p.play(); });
   preload(1 - cur, idx + 1);     /* 다음 영상 미리 로드 */
@@ -228,10 +242,9 @@ function playCurrent(){
 
 function startSequence(){
   idx = 0; cur = 0;
-  players.forEach(v => { v.classList.remove('on'); v.muted = false; });
-  preload(0, 0);
-  showScreen('video');
-  playCurrent();
+  primeFirstVideo();             /* 이미 준비돼 있으면 아무것도 하지 않는다 */
+  playCurrent();                 /* 첫 프레임을 붙인 뒤 */
+  showScreen('video');           /* 화면을 바꾼다 */
 }
 
 function nextVideo(p){
@@ -263,11 +276,17 @@ document.getElementById('btn-start').addEventListener('click', function(){
 
 document.getElementById('btn-back').addEventListener('click', function(){
   pressEffect(this, () => {
-    players.forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); v.classList.remove('on'); });
+    /* 영상을 버리지 않고 첫 프레임으로 되감아 둔다 → 다음 참여 때도 깜빡임 없음 */
+    players.forEach(v => { v.pause(); v.classList.remove('on'); });
     screens.final.classList.remove('play');
     showScreen('start');
+    idx = 0; cur = 0;
+    primeFirstVideo();
   });
 });
+
+/* 페이지가 열리는 즉시 첫 영상 준비 시작 */
+primeFirstVideo();
 </script>
 </body>
 </html>
