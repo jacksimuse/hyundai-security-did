@@ -15,6 +15,8 @@
     font-family:'HyundaiSans','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
     -webkit-tap-highlight-color:transparent;}
   body{display:flex;align-items:center;justify-content:center;}
+  /* 키오스크 : 조작이 없으면 마우스 커서를 감춘다 */
+  body.idle, body.idle *{cursor:none;}
 
   /* ── 스테이지 : 원본 이미지 비율(2161 × 3841) 고정 ── */
   #stage{
@@ -172,6 +174,20 @@
   coin.appendChild(frag);
 })();
 
+/* ════════ 자동 진행 설정 ════════
+   ── 터치가 안 되는 화면(일반 TV·모니터)에서 버튼 없이 저절로 순환하게 한다.
+      손으로 누르는 터치 화면이라면 enabled 를 false 로 바꾸면 된다.
+      시간 단위는 밀리초(1000 = 1초). ── */
+const AUTO = {
+  enabled:   true,
+  startHold:  8000,   /* 시작 화면을 보여주는 시간 */
+  finalHold: 12000    /* 완료 화면을 보여주는 시간 */
+};
+
+let autoTimer = null;
+function clearAuto(){ if (autoTimer){ clearTimeout(autoTimer); autoTimer = null; } }
+function scheduleAuto(fn, ms){ clearAuto(); if (AUTO.enabled) autoTimer = setTimeout(fn, ms); }
+
 /* ════════ 화면 전환 ════════ */
 const screens = {
   start: document.getElementById('screen-start'),
@@ -229,26 +245,42 @@ function primeFirstVideo(){
   else p.addEventListener('loadedmetadata', toStart, { once: true });
 }
 
+/* 감시 타이머 : 영상이 끝나야 할 시간이 지나도 안 끝나면 강제로 다음 순서로.
+   무인 운영 중 파일 손상·재생 실패로 화면이 멈춰 있는 것을 막는다. */
+let watchdog = null;
+function clearWatchdog(){ if (watchdog){ clearTimeout(watchdog); watchdog = null; } }
+function armWatchdog(p){
+  clearWatchdog();
+  const dur = (isFinite(p.duration) && p.duration > 0) ? p.duration * 1000 : 20000;
+  watchdog = setTimeout(() => nextVideo(p), dur + 2000);
+}
+
 function playCurrent(){
   const p = players[cur];
   /* 화면에 나타나기 전에 먼저 불투명 상태로 만들어 페이드인 깜빡임을 없앤다 */
   players.forEach(v => { if (v !== p) v.classList.remove('on'); });
   p.classList.add('on');
+  if (p.error){ nextVideo(p); return false; }  /* 이미 재생 불가면 바로 다음으로 */
   if (p.currentTime > 0.05) { try { p.currentTime = 0; } catch(e){} }
   const tryPlay = p.play();
   if (tryPlay && tryPlay.catch) tryPlay.catch(() => { p.muted = true; p.play(); });
+  armWatchdog(p);
+  p.addEventListener('loadedmetadata', () => { if (p.classList.contains('on')) armWatchdog(p); }, { once: true });
   preload(1 - cur, idx + 1);     /* 다음 영상 미리 로드 */
+  return true;
 }
 
 function startSequence(){
+  clearAuto();
   idx = 0; cur = 0;
-  primeFirstVideo();             /* 이미 준비돼 있으면 아무것도 하지 않는다 */
-  playCurrent();                 /* 첫 프레임을 붙인 뒤 */
-  showScreen('video');           /* 화면을 바꾼다 */
+  primeFirstVideo();                          /* 이미 준비돼 있으면 아무것도 하지 않는다 */
+  if (playCurrent()) showScreen('video');     /* 첫 프레임을 붙인 뒤 화면을 바꾼다
+                                                 (재생이 불가능하면 이미 완료 화면으로 넘어간 상태) */
 }
 
 function nextVideo(p){
   if (!p.classList.contains('on')) return;   /* 비활성 플레이어 이벤트 무시 */
+  clearWatchdog();
   idx++;
   if (idx < VIDEOS.length){ cur = 1 - cur; playCurrent(); }
   else showFinal();
@@ -262,11 +294,25 @@ players.forEach(p => {
 
 /* ════════ 마지막 화면 ════════ */
 function showFinal(){
+  clearWatchdog();
   players.forEach(v => { v.pause(); v.classList.remove('on'); });
   screens.final.classList.remove('play');
   void screens.final.offsetWidth;            /* 애니메이션 재시작 */
   showScreen('final');
   screens.final.classList.add('play');
+  scheduleAuto(goToStart, AUTO.finalHold);   /* 잠시 뒤 시작 화면으로 */
+}
+
+/* ════════ 시작 화면으로 ════════ */
+function goToStart(){
+  clearWatchdog();
+  /* 영상을 버리지 않고 첫 프레임으로 되감아 둔다 → 다음 참여 때도 깜빡임 없음 */
+  players.forEach(v => { v.pause(); v.classList.remove('on'); });
+  screens.final.classList.remove('play');
+  showScreen('start');
+  idx = 0; cur = 0;
+  primeFirstVideo();
+  scheduleAuto(startSequence, AUTO.startHold);   /* 잠시 뒤 자동으로 영상 재생 */
 }
 
 /* ════════ 버튼 이벤트 ════════ */
@@ -275,18 +321,22 @@ document.getElementById('btn-start').addEventListener('click', function(){
 });
 
 document.getElementById('btn-back').addEventListener('click', function(){
-  pressEffect(this, () => {
-    /* 영상을 버리지 않고 첫 프레임으로 되감아 둔다 → 다음 참여 때도 깜빡임 없음 */
-    players.forEach(v => { v.pause(); v.classList.remove('on'); });
-    screens.final.classList.remove('play');
-    showScreen('start');
-    idx = 0; cur = 0;
-    primeFirstVideo();
-  });
+  pressEffect(this, goToStart);
 });
 
-/* 페이지가 열리는 즉시 첫 영상 준비 시작 */
-primeFirstVideo();
+/* ════════ 마우스 커서 자동 숨김 (키오스크) ════════ */
+let cursorTimer = null;
+function poke(){
+  document.body.classList.remove('idle');
+  clearTimeout(cursorTimer);
+  cursorTimer = setTimeout(() => document.body.classList.add('idle'), 3000);
+}
+document.addEventListener('mousemove', poke);
+poke();
+
+/* ════════ 시작 ════════ */
+primeFirstVideo();                               /* 첫 영상 미리 준비 */
+scheduleAuto(startSequence, AUTO.startHold);     /* 자동 진행 시작 */
 </script>
 </body>
 </html>
