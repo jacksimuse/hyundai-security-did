@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================
-rem  2026 Physical Security Campaign DID - Kiosk Launcher
+rem  2026 Physical Security Campaign DID - Kiosk Launcher (LAB version)
 rem  Runs index.html fullscreen in Chrome (or Edge) kiosk mode.
 rem  Press Alt+F4 to quit.
 rem ============================================================
@@ -8,7 +8,7 @@ rem ============================================================
 setlocal
 
 rem --- build a file:// URL from this folder ---
-set "PAGE=%~dp0index.html"
+set "PAGE=%~dp0lab.html"
 set "PAGE=%PAGE:\=/%"
 set "URL=file:///%PAGE%"
 
