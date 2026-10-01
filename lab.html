@@ -221,14 +221,17 @@ function pressEffect(btn, done){
 }
 
 /* ════════ 영상 재생 (여러 편일 때는 플레이어 2개를 교차해 끊김 없이 이어 재생) ════════ */
-const VIDEOS = ['0930_현대자동차 공장보안_통합쇼츠_연구소VER.mp4'];
+const VIDEOS = ['[ARGOS] 현대자동차 물리보안 캠페인_통합쇼츠_연구소VER_1001.mp4'];
 const players = [document.getElementById('pA'), document.getElementById('pB')];
 let cur = 0, idx = 0;
+
+/* 파일명에 공백·대괄호·한글이 있어도 안전하게 불러오도록 주소를 인코딩한다 */
+function videoURL(name){ return encodeURI(name); }
 
 function preload(playerIndex, videoIndex){
   if (videoIndex >= VIDEOS.length) return;
   const p = players[playerIndex];
-  p.src = VIDEOS[videoIndex];
+  p.src = videoURL(VIDEOS[videoIndex]);
   p.load();
 }
 
@@ -236,8 +239,8 @@ function preload(playerIndex, videoIndex){
    준비된 상태로 화면을 바꾸므로 전환 순간에 검은 화면이 스치지 않는다. */
 function primeFirstVideo(){
   const p = players[0];
-  if (p.getAttribute('src') !== VIDEOS[0]){
-    p.src = VIDEOS[0];
+  if (p.getAttribute('src') !== videoURL(VIDEOS[0])){
+    p.src = videoURL(VIDEOS[0]);
     p.load();
   }
   const toStart = () => { try { p.currentTime = 0; } catch(e){} };
