@@ -220,8 +220,29 @@ function pressEffect(btn, done){
   setTimeout(done, 180);         /* 효과가 보인 뒤 화면 전환 */
 }
 
-/* ════════ 영상 재생 (여러 편일 때는 플레이어 2개를 교차해 끊김 없이 이어 재생) ════════ */
-const VIDEOS = ['[ARGOS] 현대자동차 물리보안 캠페인_통합쇼츠_공장VER_1001.mp4'];
+/* ════════ 영상 후보 (무작위 재생) ════════
+   [참여하기]를 누를 때마다 아래 후보 중 한 편을 무작위로 골라 재생한다.
+   직전에 나온 영상은 다음 차례 후보에서 빼서, 같은 영상이 연달아 나오지 않게 한다.
+   영상을 바꾸거나 늘리려면 이 목록만 고치면 된다. */
+const VIDEO_POOL = [
+  '1006_현대자동차 공장보안 1차_쇼츠_공장RE2_1.mp4',
+  '1006_현대자동차 공장보안 2차_쇼츠_RE3_1.mp4',
+  '1006_현대자동차 공장보안 3차_쇼츠_RE2_1.mp4'
+];
+
+let lastPicked = null;
+function pickVideo(){
+  let pool = VIDEO_POOL.filter(v => v !== lastPicked);
+  if (!pool.length) pool = VIDEO_POOL.slice();
+  const v = pool[Math.floor(Math.random() * pool.length)];
+  lastPicked = v;
+  return v;
+}
+
+/* 이번 차례에 재생할 영상 — 화면이 열릴 때와 '처음으로'를 누를 때마다 새로 고른다.
+   고른 한 편만 미리 준비하므로 메모리에는 항상 영상 하나만 올라간다. */
+let VIDEOS = [pickVideo()];
+
 const players = [document.getElementById('pA'), document.getElementById('pB')];
 let cur = 0, idx = 0;
 
@@ -314,6 +335,7 @@ function goToStart(){
   screens.final.classList.remove('play');
   showScreen('start');
   idx = 0; cur = 0;
+  VIDEOS = [pickVideo()];                        /* 다음 방문객이 볼 영상을 미리 고름 */
   primeFirstVideo();
   scheduleAuto(startSequence, AUTO.startHold);   /* 잠시 뒤 자동으로 영상 재생 */
 }
