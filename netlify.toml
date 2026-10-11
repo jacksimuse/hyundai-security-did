@@ -7,3 +7,21 @@
   for = "/*.mp4"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+
+# ── 현장 QR 대응 ──────────────────────────────────────────────
+# 현장에 이미 배포된 QR이 사이트 기본 주소(/)를 가리키므로,
+# 기본 주소로 들어오면 연구소 버전(lab.html)을 보여준다.
+# 파일은 그대로 두고 주소 연결만 바꾸는 것이라 USB·키오스크 쪽에는 영향이 없다.
+# 공장 버전은 /factory 로 들어가면 된다.
+# 되돌리려면 아래 두 블록을 지우면 된다.
+[[redirects]]
+  from = "/"
+  to = "/lab.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/factory"
+  to = "/index.html"
+  status = 200
+  force = true
